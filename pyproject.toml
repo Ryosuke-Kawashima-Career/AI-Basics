@@ -1,0 +1,14 @@
+[project]
+name = "ai-basics"
+version = "0.1.0"
+description = "AI Basics Project"
+authors = [
+    { name = "Developer" }
+]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "accelerate",
+    "matplotlib",
+    "transformers",
+]
