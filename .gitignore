@@ -1,2 +1,4 @@
 .agent
 .venv
+results/
+LLM/results/
