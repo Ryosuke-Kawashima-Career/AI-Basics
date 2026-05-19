@@ -10,6 +10,9 @@ requires-python = ">=3.9"
 dependencies = [
     "accelerate",
     "datasets>=4.5.0",
+    "einops>=0.8.2",
     "matplotlib",
-    "transformers",
+    "tiktoken>=0.13.0",
+    "transformers>=4.40.0,<5.0.0",
+    "transformers-stream-generator>=0.0.5",
 ]
