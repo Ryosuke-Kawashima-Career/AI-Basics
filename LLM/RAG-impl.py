@@ -62,9 +62,6 @@ def chunking_fixed_length(data: List[Dict[str, str]], fix_len: int=300) -> List[
 
     return chunks
 
-chuncked_data = chunking_fixed_length(data, fix_len=300)
-print(chuncked_data)
-
 ## Create a Vector Store
 
 # Build a pipleline for the RAG system
@@ -85,12 +82,50 @@ def simple_query(llm, tokenizer):
     print("Decoded Tokens:", decoded_tokens[0])
 
 ## Retrieve the Top K contents related to the query from the Vector Store
+## Embedding is need for verctor search
+from sentence_transformers import SentenceTransformer
+import numpy as np
+def normalize_vector(vec):
+    norm = np.linalg.norm(vec)
+    norm = np.clip(norm, a_min=1e-10, a_max=None)  # Avoid division by zero
+    return vec / norm
+embed_model_name = "Qwen/Qwen-7B-Chat"
+embed_model = SentenceTransformer(embed_model_name)
+def top_k_retrieval(query: str, chuncked_data: List[str], k: int = 5) -> List[str]:
+    query_embedding = embed_model.encode(query)
+    chunk_embeddings = embed_model.encode(chuncked_data)
+    # Normalize the embeddings to unit vectors for cosine similarity
+    query_embedding = normalize_vector(query_embedding)
+    chunk_embeddings = np.array([normalize_vector(embedding) for embedding in chunk_embeddings])
+    cosine_similarities = query_embedding @ chunk_embeddings.T
+    top_k_indices = cosine_similarities.argsort()[::-1][:k]
+    ### argsort returns the indices of the original array that would sort the array. [::-1] reverses the order to get the top k highest similarities, and [:k] selects the top k indices.
+    top_k_chunks = [chuncked_data[index] for index in top_k_indices]
+    return top_k_chunks
 
 ## Integrate the query and the retrieved contents to form a prompt
+def integrate_query_and_retrieved(query: str, retrieved_chunks: List[str]) -> str:
+    integrated_prompt = query + "\n\n" + "Retrieved Information:\n" + "\n".join(retrieved_chunks)
+    return integrated_prompt
 
 # Feed it to the **LLM**
-
-# Return the response
+def generate_response(llm, tokenizer, integrated_prompt):
+    message = [
+        {"role": "user", "content": integrated_prompt},
+    ]
+    tokens = tokenizer.apply_chat_template(
+        message,
+        add_generation_prompt=True,
+        tokenize=True
+    )
+    # Embedding the integrated prompt
+    input_tokens = tokenizer(tokens, return_tensors="pt").to(model.device)
+    generated_tokens = model.generate(**input_tokens)
+    ## Q. What is the data structure of generated_tokens? How to decode it to text?
+    output_ids = generated_tokens[0][input_tokens["input_ids"].shape[1]:].tolist()
+    # Vector to text
+    content = tokenizer.decode(output_ids, skip_special_tokens=True)
+    return content
 
 # Evaluate and Test the RAG system
 def main():
