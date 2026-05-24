@@ -15,3 +15,7 @@ Q. What is the exact dimenstion of `input_tokens` and `output_ids` of `tokenizer
 A. input_tokens Dimension: A 2D PyTorch (PT (パイトーチ)) tensor of shape (batch_size, sequence_length) (e.g. (1, 48)).
 output_ids Dimension: A 1D Python list of shape (num_generated_tokens,) (e.g. (74,)).
 Code Mechanism: The Large Language Model (LLM (大規模言語モデル)) appends newly generated tokens directly to your prompt, yielding a combined tensor of shape (1, sequence_length + num_generated_tokens). The code slices this tensor at [prompt_len:] to cleanly isolate and extract only the new response tokens for decoding.
+
+Q. Does the tokenizer conduct embedding tokens? Does this do both tokenization and embedding simultaneously?
+
+A. The tokenizer does not perform embedding; instead, tokenization and embedding are two completely separate, sequential processes. First, the tokenizer splits raw text into discrete tokens (トークン) and maps them to integer vocabulary IDs (ID番号). Next, the model's internal embedding layer (埋め込み層) converts these discrete IDs into dense high-dimensional vectors (分散表現) before feeding them into the Large Language Model (LLM (大規模言語モデル)).
