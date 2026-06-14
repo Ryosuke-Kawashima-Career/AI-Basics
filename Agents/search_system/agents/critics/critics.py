@@ -1,4 +1,4 @@
-from google.adk.agents
+from google.adk.agents import LlmAgent
 from pydantic import BaseModel, Field
 from typing import List
 

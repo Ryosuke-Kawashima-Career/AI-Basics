@@ -1,5 +1,4 @@
 from google.adk.a2a.utils.agent_to_a2a import to_a2a
-
 from agents.websearcher.websearcher import websearcher_agent
 
 # Wraps the agent as an A2A-compatible Starlette app and auto-generates
