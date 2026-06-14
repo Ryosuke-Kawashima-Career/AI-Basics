@@ -30,3 +30,10 @@ print("Matrix Mult:\n", matmul)            # A @ B
 # Matching indices on the same matrix automatically extracts the diagonal and sums
 trace = np.einsum("ii->", A)               # 1 + 4 = 5
 print("Trace:", trace)                     # np.trace(A)
+
+def my_cross(u, v):
+    epsilon = np.zeros((3, 3, 3))
+    # Even permutation
+    epsilon[0, 1, 2] = epsilon[1, 2, 0] = epsilon[2, 0, 1] = 1
+    epsilon[0, 2, 1] = epsilon[1, 0, 2] = epsilon[2, 1, 0] = -1
+    return np.einsum('ijk, j, k', epsilon, u, v)
