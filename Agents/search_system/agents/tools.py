@@ -60,7 +60,7 @@ def truncate_context(text: str, max_chars: int = 4000) -> str:
     cut = text.rfind(" ", 0, max_chars)
     if cut == -1:
         cut = max_chars
-    return text[:cut].rstrip() + " […truncated]"
+    return text[:cut].rstrip() + " [...truncated]"
 
 
 def tag_citations(answer: str, sources: list[dict]) -> str:
