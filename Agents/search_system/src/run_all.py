@@ -57,6 +57,7 @@ import time
 
 import httpx
 from google.adk.runners import InMemoryRunner
+from google.genai import types
 
 # ---------------------------------------------------------------------------
 # Step 1: Define what to launch
@@ -153,7 +154,8 @@ def wait_for_all_specialists() -> None:
 async def ask(coordinator_agent, query: str) -> str:
     runner = InMemoryRunner(agent=coordinator_agent)
     final_text = ""
-    async for event in runner.run_async(user_id="cli", session_id="cli", new_message=query):
+    message = types.UserContent(query)
+    async for event in runner.run_async(user_id="cli", session_id="cli", new_message=message):
         if event.is_final_response():
             final_text = event.content.parts[0].text
     return final_text

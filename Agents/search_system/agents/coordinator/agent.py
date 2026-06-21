@@ -22,8 +22,16 @@ critics_remote = RemoteA2aAgent(
  
 coordinator_agent = LlmAgent(
     name="coordinator",
-    model="gemini-2.0-flash",
+    model="gemini-1.5-flash",
     description="Coordinates research, drafting, and critique to answer the user.",
-    instruction="...",
+    instruction=(
+        "You are a research coordinator. Your goal is to answer the user's question thoroughly and accurately.\n\n"
+        "Process:\n"
+        "1. Use the websearcher agent to gather background information and sources.\n"
+        "2. Use the planner agent to draft an initial answer based on the research.\n"
+        "3. Use the critics agent to evaluate and improve the draft answer.\n"
+        "4. Provide the final, refined answer to the user.\n\n"
+        "Be thorough in your research, clear in your explanations, and open to constructive criticism."
+    ),
     sub_agents=[websearcher_remote, planner_remote, critics_remote],
 )

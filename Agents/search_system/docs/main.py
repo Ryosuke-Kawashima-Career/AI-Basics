@@ -73,6 +73,7 @@ import time
 
 import httpx
 from google.adk.runners import InMemoryRunner
+from google.genai import types
 
 from agents.coordinator.agent import coordinator_agent  # you still need to create this file
 
@@ -140,8 +141,9 @@ async def ask(query: str) -> str:
     """Send `query` to the Coordinator and return its final response text."""
     runner = InMemoryRunner(agent=coordinator_agent)
     final_text = ""
+    message = types.UserContent(query)
     async for event in runner.run_async(
-        user_id="cli", session_id="cli", new_message=query
+        user_id="cli", session_id="cli", new_message=message
     ):
         if event.is_final_response():
             final_text = event.content.parts[0].text
