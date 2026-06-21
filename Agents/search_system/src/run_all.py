@@ -1,9 +1,9 @@
 """
-EXAMPLE: docs/run_all.py — one command to start everything
+EXAMPLE: src/run_all.py — one command to start everything
 =============================================================
 PURPOSE: Launch the three specialist A2A services (Websearcher, Planner,
          Critics) as background subprocesses, wait until all three are
-         reachable, then run the same query flow as `docs/main.py` — all
+         reachable, then run the same query flow as `src/main.py` — all
          from a single command instead of four separate terminals.
 
 WHY THIS FILE EXISTS:
@@ -15,8 +15,11 @@ WHY THIS FILE EXISTS:
   subprocess it started so you don't end up with orphaned servers still
   holding ports 8101-8103.
 
-HOW TO RUN:
-    uv run python docs/run_all.py "Explain RAG vs fine-tuning"
+HOW TO RUN — must be invoked as a module, from the project root:
+    uv run python -m src.run_all "Explain RAG vs fine-tuning"
+
+  Do NOT run it as `uv run python src/run_all.py` — see the
+  ModuleNotFoundError note below for why that fails.
 
   With no argument, it starts an interactive loop where you can type
   multiple queries; type `exit` or press Ctrl+C to shut everything down.
@@ -25,13 +28,31 @@ PREREQUISITE:
   This still assumes `agents/coordinator/agent.py` exists and exports a
   `coordinator_agent` LlmAgent with its sub_agents wired via RemoteA2aAgent
   (see the architecture note in docs/main.py if that file isn't built yet).
+
+WHY `ModuleNotFoundError: No module named 'agents'` HAPPENS HERE:
+  There's no `agents/__init__.py` or packaging config in this project —
+  `agents` and `src` are just plain directories. They only become
+  importable when the project ROOT is on `sys.path`. Two ways that happens:
+    - `python -m src.run_all`  -> Python adds the current *working*
+      directory (the root, if you run it from there) to sys.path.
+    - `python src/run_all.py` -> Python adds the *script's own folder*
+      (`src/`) to sys.path instead — the root is never added, so `agents`
+      can't be found, even though it sits right next to `src/`.
+  The sys.path.insert below is a defensive fallback so this still works
+  even if someone runs it the second way (e.g. an IDE "Run" button).
 """
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+# Defensive fallback: guarantee the project root is importable regardless
+# of how this file was launched (see WHY note above).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import asyncio
 import subprocess
-import sys
 import time
 
 import httpx
@@ -105,7 +126,7 @@ def wait_for_agent(name: str, url: str, timeout: float = 15.0) -> None:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
-            if httpx.get(url, timeout=1.0).status_code == 200:
+            if httpx.get(url, timeout=10.0).status_code == 200:
                 print(f"  [ok] {name} is reachable")
                 return
         except httpx.ConnectError:

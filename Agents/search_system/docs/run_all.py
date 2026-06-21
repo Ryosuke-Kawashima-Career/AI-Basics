@@ -15,8 +15,15 @@ WHY THIS FILE EXISTS:
   subprocess it started so you don't end up with orphaned servers still
   holding ports 8101-8103.
 
-HOW TO RUN:
-    uv run python docs/run_all.py "Explain RAG vs fine-tuning"
+HOW TO RUN — must be invoked as a module, from the project root:
+    uv run python -m docs.run_all "Explain RAG vs fine-tuning"
+
+  Do NOT run it as `uv run python docs/run_all.py` — running a script by
+  path (rather than with -m) puts the script's OWN folder on sys.path
+  instead of the project root, so `agents` won't be importable and you'll
+  hit `ModuleNotFoundError: No module named 'agents'`. The sys.path.insert
+  below is a defensive fallback in case you (or an IDE "Run" button) do
+  invoke it that way anyway.
 
   With no argument, it starts an interactive loop where you can type
   multiple queries; type `exit` or press Ctrl+C to shut everything down.
@@ -29,9 +36,13 @@ PREREQUISITE:
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import asyncio
 import subprocess
-import sys
 import time
 
 import httpx
