@@ -1,0 +1,15 @@
+from sklearn.tree import plot_tree
+def random_forest_classifier(df: pd.DataFrame, target: pd.Series):
+    X_train, X_test, y_train, y_test = train_test_split(df, target, test_size=0.2, random_state=42)
+    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    model.fit(X_train, y_train)
+    accuracy = model.score(X_test, y_test)
+    print(f"Accuracy: {accuracy:.2f}")
+    y_pred = model.predict(X_test)
+    scatter = plt.scatter(X_test.iloc[:, 0], X_test.iloc[:, 1], c=y_pred, cmap='viridis', edgecolor='k', s=100)
+    handles, _ = scatter.legend_elements()
+    plt.legend(handles, ['Setosa', 'Versicolor', 'Virginica'], title="Classes")
+    confusion_matrix = pd.crosstab(y_test, y_pred, rownames=['Actual'], colnames=['Predicted']).rename(columns={0: 'Setosa', 1: 'Versicolor', 2: 'Virginica'})
+    print("Confusion Matrix:\n", confusion_matrix)
+    plot_tree(model.estimators_[0], feature_names=iris.feature_names, class_names=iris.target_names, filled=True)
+random_forest_classifier(df, iris.target)
