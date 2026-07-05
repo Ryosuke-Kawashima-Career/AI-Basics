@@ -104,6 +104,77 @@ impl FeedForward {
     }
 }
 
+pub struct Embedding {
+    // Weight matrix containing embedding vectors
+    // Shape: [vocab_size, dim_model]
+    pub weight: Array2<f32>,
+}
+
+impl Embedding {
+    pub fn new(vocab_size: usize, dim_model: usize) -> Self {
+        let mut rng = thread_rng();
+        let uniform_distribution = Uniform::new(-0.1, 0.1);
+        let weight: Array2<f32> = Array2::from_shape_fn((vocab_size, dim_model), |_| {
+            uniform_distribution.sample(&mut rng)
+        });
+        Self { weight }
+    }
+
+    pub fn forward(&self, token_ids: &[usize]) -> Array2<f32> {
+        /*Performs embedding lookup
+        Input: token_ids: A slice of token indices with shape [S]
+        Output: dense embeddings of shape [S, Dim_model]
+         */
+        let seq_len: usize = token_ids.len();
+        let dim_model: usize = self.weight.shape()[1];
+        let mut output: Array2<f32> = Array2::zeros((seq_len, dim_model));
+        for (row_idx, &token_id) in token_ids.iter().enumerate() {
+            let embed_vector: ArrayView1<f32> = self.weight.row(token_id);
+            output.row_mut(row_idx).assign(&embed_vector);
+        }
+        output
+    }
+}
+
+pub struct PositionalEncoding {
+    // Precalculation for the positional encoding table
+    // Shape: [Max_seq_len, Dim_model]
+    pub pe: Array2<f32>,
+}
+
+impl PositionalEncoding {
+    pub fn new(max_seq_len: usize, dim_model: usize) -> Self {
+        let mut pe: Array2<f32> = Array2::zeros((max_seq_len, dim_model));
+        for pos in 0..max_seq_len {
+            for i in 0..(dim_model / 2) {
+                let div_term: f32 = 10000.0f32.powf((2 * i) as f32 / dim_model as f32);
+                let sin_val: f32 = (pos as f32 / div_term).sin();
+                let cos_val: f32 = (pos as f32 / div_term).cos();
+                pe[[pos, 2 * i]] = ((pos as f32) / div_term).sin();
+                pe[[pos, 2 * i + 1]] = ((pos as f32) / div_term).cos();
+            }
+        }
+        Self { pe }
+    }
+
+    pub fn forward(&self, x: &Array2<f32>) -> Array2<f32> {
+        /*Adds positional encoding to input tokens
+        Input: Input token representations with shape: [S, Dim_model]
+        Output: Token representations with added positional encoding [S, Dim_model]
+         */
+        let seq_len: usize = x.shape()[0];
+        let dim_model: usize = x.shape()[1];
+        let mut output: Array2<f32> = Array2::zeros((seq_len, dim_model));
+        // Add positional encodings to the input embedding matrix
+        for token_id in 0..seq_len {
+            for feature in 0..dim_model {
+                output[[token_id, feature]] += self.pe[[token_id, feature]]
+            }
+        }
+        output
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -160,5 +231,53 @@ mod tests {
         assert_eq!(y.shape(), &[3, 4]);
         // 2. Check that GELU activation was applied (output is non-linear and not all zeros)
         assert!(y.iter().any(|&val| val != 0.0));
+    }
+    use ndarray::Array2;
+    #[test]
+    fn test_embedding_lookup() {
+        let vocab_size = 256;
+        let d_model = 8;
+        let embedding_layer = Embedding::new(vocab_size, d_model);
+        // Input token IDs: [104, 101, 108, 108, 111] (ASCII values for "hello")
+        // Input shape: [S=5] (1D array of sequence length 5)
+        let token_ids = vec![104, 101, 108, 108, 111];
+        let output = embedding_layer.forward(&token_ids);
+        // 1. Shape Verification: Output shape must be [S, D] -> [5, 8]
+        assert_eq!(output.shape(), &[5, 8]);
+        // 2. Lookup Consistency Check:
+        // Token 'l' (ID 108) is at index 2 and index 3 in "hello".
+        // The retrieved embedding vectors for these two rows must be identical.
+        let row_2 = output.row(2);
+        let row_3 = output.row(3);
+        assert_eq!(row_2, row_3);
+        // Token 'h' (ID 104) is at index 0. It should be different from token 'e' (ID 101) at index 1.
+        let row_0 = output.row(0);
+        let row_1 = output.row(1);
+        assert_ne!(row_0, row_1);
+    }
+    #[test]
+    fn test_positional_encoding_math() {
+        let max_seq_len = 16;
+        let d_model = 8;
+        let pe_layer = PositionalEncoding::new(max_seq_len, d_model);
+        // Create an input tensor filled with zeros to isolate the added positional encodings.
+        // Shape: [S=3, D=8] (Sequence Length = 3, Model Dimension = 8)
+        let x = Array2::zeros((3, d_model));
+        let output = pe_layer.forward(&x);
+        // 1. Shape Verification: Output shape must be [3, 8]
+        assert_eq!(output.shape(), &[3, 8]);
+        // 2. Math Verification for position 0 (pos = 0):
+        // PE(0, 2i)   = sin(0 / 10000^...) = 0.0
+        // PE(0, 2i+1) = cos(0 / 10000^...) = 1.0
+        // Since input was all zeros, output at row 0 must be exactly [0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
+        let row_0 = output.row(0);
+        let expected_row_0 = vec![0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0];
+        for j in 0..d_model {
+            assert!((row_0[j] - expected_row_0[j]).abs() < 1e-6);
+        }
+        // 3. Position Distinction Check:
+        // Position 1 must have different values than position 0.
+        let row_1 = output.row(1);
+        assert_ne!(row_0, row_1);
     }
 }

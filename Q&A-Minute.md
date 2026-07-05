@@ -59,3 +59,20 @@ Addressing the misconception that Linear Layers are only used to change tensor s
 ### Example or Analogy
 - **Linear Layer is like cooking soup**: The ingredients (features) are mixed together in a pot with spices (weights) to create a new flavor (transformed features). The pot (tensor shape) remains exactly the same, but the taste (data representation) is completely changed.
 - **FFN Expansion is like unpacking a folded tent**: You unpack the compact tent from its carrying bag ($D$) into a large open field ($d_{ff}$), make your structural changes or attach canopies (non-linear activations), and then fold it back up into the compact bag ($D$) for transport to the next layer.
+
+## Entry #4: Embedding and Positional Encoding Shapes and Frequencies
+**Timestamp:** 2026-07-05
+
+### Summary
+Evaluation of the output shape in token embedding + positional encoding addition, and explanation of why sinusoidal frequencies are scaled by $10000^{2i/D}$.
+
+### Issue
+Understanding how element-wise addition preserves tensor shapes, and explaining how frequency scaling across model dimensions helps represent absolute and relative position relationships.
+
+### Approach
+1. **Shape Preservation**: Adding token embedding matrix ($[S, D]$) and positional encoding matrix ($[S, D]$) element-wise preserves the dimension shape as $[S, D]$. For $S=5$ and $D=64$, the shape is exactly $[5, 64]$.
+2. **Frequency Scaling**: The division by $10000^{2i/D}$ scales the wavelength of the waves across the dimension channels $i$. Low-index dimensions have high-frequency waves, while high-index dimensions have low-frequency waves. This allows the model to compute relative offsets (distances) as linear transformations.
+
+### Example or Analogy
+- **Shape addition is like combining two template slides on a projector**: Overlaying two $5 \times 64$ slide grids results in a combined grid of exactly $5 \times 64$.
+- **Frequency scaling is like the hands of a clock**: The second hand ($i=0$) moves fast, the minute hand ($i=1$) moves slower, and the hour hand ($i=2$) moves very slowly. A clock can tell absolute time and relative duration because the hands move at different scales. If all hands moved at the same speed, the clock would be useless.
