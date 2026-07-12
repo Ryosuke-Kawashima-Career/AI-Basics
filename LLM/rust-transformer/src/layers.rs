@@ -1,3 +1,5 @@
+use std::fs::canonicalize;
+
 use ndarray::{Array1, Array2, ArrayView1};
 pub struct LayerNorm {
     /*Standardizes the features of each token
@@ -175,6 +177,110 @@ impl PositionalEncoding {
     }
 }
 
+use ndarray::{Array3, ArrayViewMut1, Axis};
+use rand::prelude::*;
+
+pub struct MultiHeadAttention {
+    dim_head: usize,
+    n_heads: usize,
+    // Shapes of weights: [Dim_model, Dim_model]
+    wq: Array2<f32>,
+    wk: Array2<f32>,
+    wv: Array2<f32>,
+    wo: Array2<f32>,
+}
+
+impl MultiHeadAttention {
+    pub fn new(dim_model: usize, n_heads: usize) -> Self {
+        assert!(dim_model % n_heads == 0);
+        let dim_head: usize = dim_model / n_heads;
+        let mut rng = thread_rng();
+        let distribution = Uniform::new(-0.1, 0.1);
+
+        let wq: Array2<f32> =
+            Array2::from_shape_fn((dim_model, dim_model), |_| distribution.sample(&mut rng));
+        let wk: Array2<f32> =
+            Array2::from_shape_fn((dim_model, dim_model), |_| distribution.sample(&mut rng));
+        let wv: Array2<f32> =
+            Array2::from_shape_fn((dim_model, dim_model), |_| distribution.sample(&mut rng));
+        let wo: Array2<f32> =
+            Array2::from_shape_fn((dim_model, dim_model), |_| distribution.sample(&mut rng));
+        Self {
+            n_heads,
+            dim_head,
+            wq,
+            wk,
+            wv,
+            wo,
+        }
+    }
+
+    fn softmax_rowwise(&self, mut matrix: Array2<f32>) -> Array2<f32> {
+        /*Softmax along the axis of a 2D matrix
+         */
+        let nrows: usize = matrix.nrows();
+        for i in 0..nrows {
+            let mut row: ArrayViewMut1<f32> = matrix.row_mut(i);
+            let max_val = row.fold(f32::NEG_INFINITY, |acc, &val| acc.max(val));
+            row.mapv_inplace(|v| (v - max_val).exp());
+            let exp_sum: f32 = row.sum();
+            row.mapv_inplace(|v| v / (exp_sum + 1e-9));
+        }
+        matrix
+    }
+
+    pub fn forward(&self, x: &Array2<f32>) -> Array2<f32> {
+        /*Calculates self-attention for a single sequence
+        Args:
+            x: Input token representations with shape [S, Dim_model]
+        Output: Attention matrix with shape [S, Dim_model]
+         */
+        let seq_len: usize = x.nrows();
+        let dim_model: usize = x.ncols();
+        // 1. projection: [S, Dim_model] X [Dim_model, Dim_model] -> [S, Dim_model]
+        let q_proj: Array2<f32> = x.dot(&self.wq);
+        let k_proj: Array2<f32> = x.dot(&self.wk);
+        let v_proj: Array2<f32> = x.dot(&self.wv);
+        // 2. Split into multiple heads: [S, Dim_model] -> [S, N_heads, Dim_head]
+        let mut head_outputs: Vec<Array2<f32>> = Vec::new();
+        // Scaling
+        let d_sqrt: f32 = (self.n_heads as f32).sqrt();
+        for head in 0..self.n_heads {
+            let start: usize = head * self.dim_head;
+            let end: usize = (head + 1) * self.dim_head;
+            // Extract the slice for the current head: Shape [S, D_k]]
+            let q_head: Array2<f32> = q_proj.slice(ndarray::s![.., start..end]).to_owned();
+            let k_head: Array2<f32> = k_proj.slice(ndarray::s![.., start..end]).to_owned();
+            let v_head: Array2<f32> = v_proj.slice(ndarray::s![.., start..end]).to_owned();
+            // Calculate the score: [S, Dim_head] X [Dim_head, S] -> [S, S]
+            let mut scores: Array2<f32> = q_head.dot(&k_head.t());
+            scores.mapv_inplace(|v| v / d_sqrt);
+            // Apply Causal Mask to prevent data leakage
+            for i in 0..seq_len {
+                for j in (i + 1)..seq_len {
+                    scores[[i, j]] = f32::NEG_INFINITY;
+                }
+            }
+            // Applying softmax along the columns
+            let weights: Array2<f32> = self.softmax_rowwise(scores);
+            // Compute Weighted sum of value vectors: [S, S] X [S, Dim_head] -> [S, Dim_head]
+            let output_head: Array2<f32> = weights.dot(&v_head);
+            head_outputs.push(output_head);
+        }
+        // Concatenate all the heads: [S, Dim_head] X Heads -> [S, Dim_model]
+        let mut concatenated: Array2<f32> = Array2::zeros((seq_len, dim_model));
+        for head in 0..self.n_heads {
+            let start: usize = head * self.dim_head;
+            let end: usize = (head + 1) * self.dim_head;
+            concatenated
+                .slice_mut(ndarray::s![.., start..end])
+                .assign(&head_outputs[head]);
+        }
+        // Linear projection: [S, Dim_model] X [Dim_model, Dim_model] -> [S, Dim_model]
+        return concatenated.dot(&self.wo);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -279,5 +385,70 @@ mod tests {
         // Position 1 must have different values than position 0.
         let row_1 = output.row(1);
         assert_ne!(row_0, row_1);
+    }
+
+    #[test]
+    fn test_multi_head_attention_shapes_and_causality() {
+        let d_model = 8;
+        let n_heads = 2;
+        let mha = MultiHeadAttention::new(d_model, n_heads);
+        // ========================================================
+        // 1. Shape Verification
+        // ========================================================
+        // Input shape: [S=3, D=8] (Sequence Length = 3, Model Dimension = 8)
+        let x = array![
+            [0.1, 0.2, -0.3, 0.4, 0.5, -0.6, 0.7, 0.8],
+            [0.9, -0.1, 0.2, 0.3, -0.4, 0.5, 0.6, -0.7],
+            [-0.2, 0.8, 0.1, -0.5, 0.3, 0.2, -0.1, 0.4]
+        ];
+        let output1 = mha.forward(&x);
+        // Verify output shape is exactly [S, D] -> [3, 8]
+        assert_eq!(output1.shape(), &[3, 8]);
+        // ========================================================
+        // 2. Causal Invariance Verification
+        // ========================================================
+        // In a decoder-only attention block, a token at index i must not attend
+        // to any token at index j > i. This means changing the token at index 2
+        // should have absolutely zero impact on the outputs of index 0 and index 1.
+
+        // Input 2: Identical to input 1 for index 0 and 1, but index 2 is changed.
+        let x_changed = array![
+            [0.1, 0.2, -0.3, 0.4, 0.5, -0.6, 0.7, 0.8], // Same as x[0]
+            [0.9, -0.1, 0.2, 0.3, -0.4, 0.5, 0.6, -0.7], // Same as x[1]
+            [9.9, 9.9, 9.9, 9.9, 9.9, 9.9, 9.9, 9.9]    // Completely different!
+        ];
+        let output2 = mha.forward(&x_changed);
+        // Verify output shape is still [3, 8]
+        assert_eq!(output2.shape(), &[3, 8]);
+        // Check index 0: Output must be exactly the same (within float tolerance)
+        for j in 0..d_model {
+            assert!(
+                (output1[[0, j]] - output2[[0, j]]).abs() < 1e-5,
+                "Causality violated at index 0! Value changed: {} vs {}",
+                output1[[0, j]],
+                output2[[0, j]]
+            );
+        }
+        // Check index 1: Output must be exactly the same (within float tolerance)
+        for j in 0..d_model {
+            assert!(
+                (output1[[1, j]] - output2[[1, j]]).abs() < 1e-5,
+                "Causality violated at index 1! Value changed: {} vs {}",
+                output1[[1, j]],
+                output2[[1, j]]
+            );
+        }
+        // Check index 2: Outputs should be different since the input at index 2 was changed
+        let mut row2_differs = false;
+        for j in 0..d_model {
+            if (output1[[2, j]] - output2[[2, j]]).abs() > 1e-5 {
+                row2_differs = true;
+                break;
+            }
+        }
+        assert!(
+            row2_differs,
+            "Expected outputs at index 2 to differ, but they were identical."
+        );
     }
 }

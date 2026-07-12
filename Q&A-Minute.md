@@ -76,3 +76,20 @@ Understanding how element-wise addition preserves tensor shapes, and explaining 
 ### Example or Analogy
 - **Shape addition is like combining two template slides on a projector**: Overlaying two $5 \times 64$ slide grids results in a combined grid of exactly $5 \times 64$.
 - **Frequency scaling is like the hands of a clock**: The second hand ($i=0$) moves fast, the minute hand ($i=1$) moves slower, and the hour hand ($i=2$) moves very slowly. A clock can tell absolute time and relative duration because the hands move at different scales. If all hands moved at the same speed, the clock would be useless.
+
+## Entry #5: Attention Matrix Shapes and Softmax Scaling
+**Timestamp:** 2026-07-12
+
+### Summary
+Evaluating the dimensions of the attention weight matrix ($A_h$) and explaining how the $\sqrt{d_{head}}$ scaling factor prevents vanishing gradients in the Softmax function.
+
+### Issue
+Clarifying the difference between token feature shapes ($[S, d_{head}]$) and attention relationship shapes ($[S, S]$), and understanding the impact of large dot product variances on backpropagation.
+
+### Approach
+1. **Attention Shape and Mask**: The attention weights matrix $A_h$ represents the token-to-token relationship, so its shape is $[S, S]$ (which is $[2, 2]$ when $S=2$). The causal mask ensures that the index $[0, 1]$ (token 0 attending to token 1 in the future) has a post-softmax probability of exactly $0.0$.
+2. **Softmax Scaling**: For independent random query and key vectors of dimension $d_{head}$, the variance of their dot product is $d_{head}$. For large dimensions, the dot products grow very large in magnitude, causing Softmax to saturate (converging to near-0 or near-1). In these flat regions, the gradients become extremely close to zero, leading to vanishing gradients (勾配消失). Dividing by $\sqrt{d_{head}}$ normalizes the variance to $1.0$, keeping gradients active.
+
+### Example or Analogy
+- **Attention shape is like a classmate relationship grid**: If there are $S$ students in a class, a grid showing who pays attention to whom is of size $S \times S$. The feature size $d_{head}$ (e.g., how many hobbies each student has) does not affect the size of this relationship grid.
+- **Softmax scaling is like using sunglasses in bright light**: If the light intensity ($d_{head}$) increases, everything becomes overexposed (saturated). Scaling behaves like sunglasses, bringing the intensity back to a range where you can see colors and details clearly (gradients remain active).
