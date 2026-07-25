@@ -93,3 +93,23 @@ Clarifying the difference between token feature shapes ($[S, d_{head}]$) and att
 ### Example or Analogy
 - **Attention shape is like a classmate relationship grid**: If there are $S$ students in a class, a grid showing who pays attention to whom is of size $S \times S$. The feature size $d_{head}$ (e.g., how many hobbies each student has) does not affect the size of this relationship grid.
 - **Softmax scaling is like using sunglasses in bright light**: If the light intensity ($d_{head}$) increases, everything becomes overexposed (saturated). Scaling behaves like sunglasses, bringing the intensity back to a range where you can see colors and details clearly (gradients remain active).
+
+## Entry #6: Residual Connections and LM Head Logit Dimensions
+**Timestamp:** 2026-07-25
+
+### Summary
+Evaluation of Residual Connections (残差接続) in Transformer Blocks and tensor shape transformations leading to the Language Modeling Head (LM Head) projection.
+
+### Issue
+Clarifying why Residual Connections ($x + f(x)$) are essential within Transformer blocks, and understanding how hidden state dimensions ($[S, D]$) map to Vocabulary Logits ($[S, V]$).
+
+### Approach
+1. **Residual Connections**: While Causal Masking prevents future data leakage inside Attention, Residual Connections ($x1 = x + \text{attn\_out}$) prevent vanishing gradients across stacked blocks by creating an identity shortcut.
+2. **LM Head Tensor Dimensions**:
+   - Representation shape before LM Head: $[S, D]$ (e.g. $[4, 64]$). Stacking $N$ blocks preserves $[S, D]$.
+   - LM Head Weight shape: $[D, V]$ (e.g. $[64, 256]$).
+   - Logits Output shape: $[S, D] \times [D, V] \to [S, V]$ (e.g. $[4, 256]$).
+
+### Example or Analogy
+- **Residual Connection is like taking an highway alongside scenic detours**: The main highway ($x$) passes directly through to the end, while scenic loops ($\text{attn\_out}$) add local context. If a detour is blocked, the main highway still carries gradient signals directly to early layers.
+- **LM Head Projection is like translating summary cards to dictionary terms**: A summary matrix of $S$ tokens represented by $D$ features ($[S, D]$) is multiplied by a dictionary matrix mapping $D$ features to $V$ vocabulary words ($[D, V]$), producing word probability scores of shape $[S, V]$.
