@@ -130,3 +130,24 @@ Randomly initialized model weights produce random logit distributions across the
 
 ### Example or Analogy
 - **Untrained model decoding is like a cat walking across a typewriter**: The cat hits random keys, producing arbitrary byte sequences. A strict dictionary checker (strict UTF-8) marks the page as invalid gibberish, whereas a lossy reader (`from_utf8_lossy`) prints the visible letters and places a symbol over unreadable scuffs.
+
+## Entry #8: Extracting a Sub-directory to an Independent GitHub Repository
+**Timestamp:** 2026-07-26
+
+### Summary
+To separate a subdirectory from a parent repository into an independent GitHub repository, you copy or extract the directory, initialize a fresh git repository, and push it to a new remote host.
+
+### Issue
+Keeping nested code projects inside a single monolithic repository makes versioning, access control, and dependency management intertwined with the parent repository.
+
+### Approach
+1. **Option A: Fresh Standalone Copy (Simple)**
+   - Copy the target folder to a separate location outside the parent repository.
+   - Initialize a new repository using `git init`, commit files, add a remote (`git remote add origin <URL>`), and push (`git push -u origin main`).
+2. **Option B: Preserve Git History (`git subtree` / `git-filter-repo`)**
+   - Use `git subtree split --prefix=<path> -b <branch>` to extract only the target directory's commit history into a new branch, then push that branch to the new repository.
+
+### Example or Analogy
+- **Fresh Copy is like moving into a new apartment with fresh boxes**: You pack only your current items and start clean without moving your old attic history.
+- **Git Subtree is like moving with your full diary**: You split out only your personal journal entries from the family album so your new home retains your complete timeline.
+
