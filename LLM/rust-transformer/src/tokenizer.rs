@@ -13,7 +13,7 @@ impl ByteTokenizer {
     // Shape: [S: Sequence length] -> String
     pub fn decode(&self, ids: &[usize]) -> String {
         let bytes: Vec<u8> = ids.iter().map(|&id| id as u8).collect();
-        String::from_utf8(bytes).unwrap_or_else(|_| String::from("[INVALID UTF-8]"))
+        String::from_utf8_lossy(&bytes).into_owned()
     }
 }
 

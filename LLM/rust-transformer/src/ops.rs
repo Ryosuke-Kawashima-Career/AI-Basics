@@ -1,6 +1,6 @@
-use ndarray::prelude::*;
 use ndarray::{Array, Ix1};
-fn softmax(x: &Array<f32, Ix1>) -> Array<f32, Ix1> {
+
+pub fn softmax(x: &Array<f32, Ix1>) -> Array<f32, Ix1> {
     let max_x: f32 = *x
         .iter()
         .max_by(|a, b| a.partial_cmp(b).unwrap())
@@ -11,12 +11,12 @@ fn softmax(x: &Array<f32, Ix1>) -> Array<f32, Ix1> {
     result
 }
 
-fn relu(x: &Array<f32, Ix1>) -> Array<f32, Ix1> {
+pub fn relu(x: &Array<f32, Ix1>) -> Array<f32, Ix1> {
     let result: Array<f32, Ix1> = x.mapv(|val| if val < 0.0 { 0.0 } else { val });
     result
 }
 
-fn gelu(x: &Array<f32, Ix1>) -> Array<f32, Ix1> {
+pub fn gelu(x: &Array<f32, Ix1>) -> Array<f32, Ix1> {
     /*Calculates Gaussian Error Linear Unit*/
     let result: Array<f32, Ix1> = x.mapv(|val| {
         0.5 * val

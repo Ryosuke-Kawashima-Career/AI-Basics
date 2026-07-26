@@ -113,3 +113,20 @@ Clarifying why Residual Connections ($x + f(x)$) are essential within Transforme
 ### Example or Analogy
 - **Residual Connection is like taking an highway alongside scenic detours**: The main highway ($x$) passes directly through to the end, while scenic loops ($\text{attn\_out}$) add local context. If a detour is blocked, the main highway still carries gradient signals directly to early layers.
 - **LM Head Projection is like translating summary cards to dictionary terms**: A summary matrix of $S$ tokens represented by $D$ features ($[S, D]$) is multiplied by a dictionary matrix mapping $D$ features to $V$ vocabulary words ($[D, V]$), producing word probability scores of shape $[S, V]$.
+
+## Entry #7: Untrained Model Decoding & Invalid UTF-8 Handling
+**Timestamp:** 2026-07-26
+
+### Summary
+Explanation of why an untrained Transformer produces invalid UTF-8 byte outputs, and implementation of lossy decoding and logit masking solutions.
+
+### Issue
+Randomly initialized model weights produce random logit distributions across the 256 vocabulary IDs. When `argmax` selects token IDs in the byte range $128..255$, strict UTF-8 decoders fail because standalone continuation bytes do not form valid UTF-8 strings, resulting in `[INVALID UTF-8]`.
+
+### Approach
+1. **Lossy UTF-8 Decoding**: Update `ByteTokenizer::decode` to use `String::from_utf8_lossy(&bytes)` which replaces invalid byte sequences with unicode replacement characters () rather than breaking string creation.
+2. **Printable ASCII Logit Masking**: Mask out non-printable ASCII IDs ($id < 32$ or $id > 126$) by setting their logits to $-\infty$ during evaluation so that argmax only picks printable characters.
+3. **Model Training**: Acknowledge that random outputs are completely expected prior to weight updates via backpropagation.
+
+### Example or Analogy
+- **Untrained model decoding is like a cat walking across a typewriter**: The cat hits random keys, producing arbitrary byte sequences. A strict dictionary checker (strict UTF-8) marks the page as invalid gibberish, whereas a lossy reader (`from_utf8_lossy`) prints the visible letters and places a symbol over unreadable scuffs.
