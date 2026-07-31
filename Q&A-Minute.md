@@ -151,3 +151,25 @@ Keeping nested code projects inside a single monolithic repository makes version
 - **Fresh Copy is like moving into a new apartment with fresh boxes**: You pack only your current items and start clean without moving your old attic history.
 - **Git Subtree is like moving with your full diary**: You split out only your personal journal entries from the family album so your new home retains your complete timeline.
 
+## Entry #9: AI Agent Architectures, Control Flow, and Visual State Machines
+**Timestamp:** 2026-07-27
+
+### Summary
+Comprehensive hands-on curriculum covering modern AI Agent Design Patterns (ReAct, LangGraph Cyclic State Graph, Multi-Agent Supervisor / Router, and Plan-and-Execute) with ASCII and Mermaid.js architecture visualizers and verification quizzes.
+
+### Issue
+Transitioning from simple single-prompt LLM calls to complex, stateful multi-agent systems requires clear state schema definitions, deterministic router conditional edges, error retry loops, and visual representation to debug cycles.
+
+### Approach
+1. **ReAct Pattern**: Single-agent loop interspersing Thought, Tool Action execution, and Observation feeding back to the reasoner.
+2. **LangGraph State Graph Pattern**: TypedDict shared state passed through functional Nodes with conditional edge routers dictating node transitions or termination.
+3. **Supervisor / Router Pattern (Antigravity SDK / ADK Alignment)**: Hierarchical orchestrator directing tasks to domain-specialized sub-agents (Researcher, Coder, Reviewer) and synthesizing results.
+4. **Plan-and-Execute Pattern**: Decoupling long-horizon planning from step execution, dynamically updating remaining steps after each iteration.
+5. **Architectural Visualization**: Using terminal ASCII renders and Mermaid.js diagram markup to visualize control flow and state graph edges.
+
+### Example or Analogy
+- **ReAct is like a Detective at a Crime Scene**: Takes notes (Thought), uses flashlight or magnifying glass (Tool Action), inspects evidence (Observation), and iterates until solving the case.
+- **LangGraph State Graph is like a Factory Assembly Line with Quality Control**: Products move from station to station (Nodes), and an inspector (Conditional Router) decides whether the item passes to shipping (END) or goes back to re-work (Cyclic Loop).
+- **Multi-Agent Supervisor is like an Orchestra Conductor**: The conductor (Supervisor Router) cues the violinist (Researcher), pianist (Coder), or percussionist (Reviewer) at precise moments and blends their music into a symphony (Final Output).
+
+
