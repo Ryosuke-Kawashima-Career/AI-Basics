@@ -6,7 +6,6 @@ def build_mnist_cnn_keras() -> tf.keras.Model:
         # Input: [Batch, Height=28, Width=28, Channel=1]
         layers.Input(shape=(28, 28, 1)),
         layers.Conv2D(filters=32, kernel_size=(3, 3), padding='same', activation='relu'),
-        # Fixed typo: MaxPool2d -> MaxPooling2D
         layers.MaxPooling2D(pool_size=(2, 2), strides=2),
         
         layers.Conv2D(filters=64, kernel_size=(3, 3), padding='same', activation='relu'),
