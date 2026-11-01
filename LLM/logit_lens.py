@@ -81,11 +81,9 @@ except ImportError:
 
         def generate(self, prompt: str, max_new_tokens: int = 15) -> str:
             input_ids = self.to_tokens(prompt)
-            attention_mask = torch.ones_like(input_ids)
             with torch.no_grad():
                 output_ids = self.hf_model.generate(
                     input_ids,
-                    attention_mask=attention_mask,
                     max_new_tokens=max_new_tokens,
                     do_sample=False,
                     pad_token_id=self.tokenizer.eos_token_id,
@@ -95,31 +93,15 @@ except ImportError:
         def run_with_cache(
             self, tokens: torch.Tensor, remove_batch_dim: bool = True
         ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor]]:
+            with torch.no_grad():
+                outputs = self.hf_model(tokens, output_hidden_states=True)
             cache: Dict[str, torch.Tensor] = {}
-            hooks = []
-
-            def _make_hook(layer_idx: int):
-                def _hook(_module, _inp, output):
-                    # GPT2Block returns a tuple where output[0] is the hidden state (resid_post)
-                    hidden = output[0] if isinstance(output, tuple) else output
-                    detached = hidden.detach()
-                    if remove_batch_dim:
-                        detached = detached.squeeze(0)
-                    cache[get_act_name("resid_post", layer_idx)] = detached
-
-                return _hook
-
+            # outputs.hidden_states[0] is embedding output; [1..n_layers] are block outputs (resid_post)
             for layer in range(self.cfg.n_layers):
-                h = self.hf_model.transformer.h[layer].register_forward_hook(_make_hook(layer))
-                hooks.append(h)
-
-            try:
-                with torch.no_grad():
-                    outputs = self.hf_model(tokens)
-            finally:
-                for h in hooks:
-                    h.remove()
-
+                hidden = outputs.hidden_states[layer + 1]
+                if remove_batch_dim:
+                    hidden = hidden.squeeze(0)
+                cache[get_act_name("resid_post", layer)] = hidden
             logits = outputs.logits.squeeze(0) if remove_batch_dim else outputs.logits
             return logits, cache
 
@@ -409,7 +391,6 @@ def plot_token_probability_line(
     fig, ax = plt.subplots(figsize=figsize)
     markers = ["o", "s", "^", "D", "v", "P"]
 
-    max_prob = 0.0
     for idx, token_str in enumerate(target_tokens):
         encoded = model.tokenizer.encode(token_str, add_special_tokens=False)
         if not encoded:
@@ -417,7 +398,6 @@ def plot_token_probability_line(
         token_id = encoded[0]
         decoded_label = model.tokenizer.decode([token_id])
         token_probs = probs_last_pos[:, token_id].detach().cpu().numpy()
-        max_prob = max(max_prob, float(token_probs.max()))
 
         marker = markers[idx % len(markers)]
         ax.plot(
@@ -431,8 +411,7 @@ def plot_token_probability_line(
 
     ax.set_xticks(layers)
     ax.set_xticklabels([f"L{l}" for l in layers])
-    upper_ylim = min(1.05, max(0.25, max_prob * 1.2))
-    ax.set_ylim(-0.01, upper_ylim)
+    ax.set_ylim(-0.02, 1.05)
     ax.set_xlabel("Transformer Layer", fontsize=12)
     ax.set_ylabel("Next-Token Probability", fontsize=12)
     ax.set_title(
