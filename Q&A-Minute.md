@@ -218,3 +218,26 @@ The draft `react_langgraph.py` had missing module imports (`os`, `ChatOpenAI`, `
 ### Example or Analogy
 - **Tool Binding is like giving a craftsman labeled tools in a belt**: The model inspects tool schemas (name, arguments, docstring descriptions) and generates structured JSON calls when a tool is needed.
 - **Conditional Routing is a signpost at a junction**: When the agent node finishes, the signpost (`tools_condition`) checks if a tool request was emitted. If yes, it redirects traffic to the workshop (`tools`); if no, it opens the exit ramp (`END`).
+
+
+## Entry #12: Logit Lens Implementation & Visual Interpretability (`logit_lens.py`)
+**Timestamp:** 2026-11-01
+
+### Summary
+Completed and refined `LLM/logit_lens.py` to demonstrate mechanistic interpretability using the Logit Lens technique, outputting both a layer-by-layer top-$k$ table and two visual plots (`logit_lens_heatmap.png` and `logit_lens_prob_trajectory.png`).
+
+### Issue
+The draft `logit_lens.py` contained syntax and import typos (`mabplotlib`, `from transformer_lens = import`), unimplemented functions (`load_model`, `generate_tokens`, `display_results`, `plot_token_probability_line`), attempted to look up non-existent per-layer `"logits"` keys in the activation cache instead of `"resid_post"`, scaled logits manually instead of applying `model.ln_final`, and plotted vocabulary size on the heatmap Y-axis instead of layers vs. token positions.
+
+### Approach
+1. **Residual Stream Projection (Logit Lens Core)**:
+   - Unpack `_, cache = model.run_with_cache(tokens, remove_batch_dim=True)` and stack `"resid_post"` across all layers (`[n_layers, seq_len, d_model]`).
+   - Apply `model.ln_final(residual_streams)` to normalize features across `d_model`.
+   - Project normalized hidden states to vocabulary space via `torch.einsum("lsd,dv->lsv", residual_streams, model.W_U)` + `model.b_U` and apply `F.softmax(logits, dim=-1)`.
+2. **Visualizations**:
+   - **2D Heatmap (`plot_logit_lens_heatmap`)**: Plots Transformer Layers (Y-axis) vs. Input Token Positions (X-axis), coloring each cell by Top-1 probability and annotating with the decoded token string.
+   - **Probability Trajectory (`plot_token_probability_line`)**: Tracks specific candidate tokens (e.g., `" Paris"`, `" London"`, `" Rome"`) across layers at the final token position.
+
+### Example or Analogy
+- **Standard LLM Inference is like only reading the final published book**: You only see the final word predicted after the last layer.
+- **Logit Lens is like reading the author's rough draft after every chapter (layer)**: By applying the final vocabulary dictionary (`ln_final` + `W_U`) to intermediate hidden states, you can watch the model's guess evolve from vague grammar words in early layers to the exact factual answer (`" Paris"`) in later layers.
