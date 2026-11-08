@@ -20,6 +20,7 @@ dependencies = [
     "matplotlib",
     "neo4j>=5.28.4",
     "neo4j-graphrag[openai]>=1.14.1",
+    "selenium>=4.6",
     "sentence-transformers>=5.1.2",
     "tiktoken>=0.13.0",
     "transformers>=4.40.0,<5.0.0",

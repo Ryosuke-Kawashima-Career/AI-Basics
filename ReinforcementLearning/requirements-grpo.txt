@@ -1,0 +1,7 @@
+# A separate training environment avoids changing the repository's uv.lock.
+# Install CPU or CUDA PyTorch first for your device (see GRPO_CPU.md / practice guide).
+trl==0.22.2
+transformers==4.56.2
+peft==0.17.1
+datasets>=4.0,<5
+accelerate>=1.4,<2
