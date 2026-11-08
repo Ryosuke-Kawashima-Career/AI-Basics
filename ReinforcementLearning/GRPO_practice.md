@@ -4,6 +4,8 @@ Start by running the offline demonstration, then attempt each question before re
 
 ## Run the example
 
+For hosted GPU training, upload [GRPO_Colab_GPU.ipynb](GRPO_Colab_GPU.ipynb) to Google Colab, select a GPU runtime, and run its cells in order. The notebook is self-contained and includes adapter download and optional private Hugging Face upload. Rebuild it after changing the script with `python ReinforcementLearning/build_colab_notebook.py`.
+
 For CPU training, follow [the CPU setup and commands](GRPO_CPU.md). The `--device cpu` flag selects float32 training and smaller defaults; CUDA remains the default for the commands below.
 
 From the repository root, these need only Python:

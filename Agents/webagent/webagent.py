@@ -159,7 +159,7 @@ class WebAgent:
         """Loads a causal LM and its tokenizer from the Hugging Face Hub."""
         tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         model = AutoModelForCausalLM.from_pretrained(
-            self.model_name, torch_dtype="auto", device_map="auto"
+            self.model_name, dtype="auto", device_map="auto"
         )
         model.eval()
         return model, tokenizer
